@@ -1,4 +1,4 @@
-import { Injectable } from '@angular/core';
+import { inject, Injectable } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { catchError, exhaustMap, map, of } from 'rxjs';
 
@@ -7,6 +7,9 @@ import { UserService } from './user.service';
 
 @Injectable()
 export class UserEffects {
+  private readonly actions$ = inject(Actions);
+  private readonly userService = inject(UserService);
+
   loadProfile$ = createEffect(() =>
     this.actions$.pipe(
       ofType(UserActions.loadProfile),
@@ -21,10 +24,6 @@ export class UserEffects {
     )
   );
 
-  constructor(
-    private readonly actions$: Actions,
-    private readonly userService: UserService
-  ) {}
 }
 
 function getErrorMessage(error: unknown): string {
