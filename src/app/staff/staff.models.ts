@@ -4,6 +4,7 @@ export type CalendarEntryType = 'availability' | 'leave' | 'remark' | 'comment';
 export interface StaffCalendarEntry {
   id: string;
   date: string;
+  endDate?: string;
   type: CalendarEntryType;
   title: string;
   startTime?: string;

@@ -25,7 +25,9 @@ export class StaffComponent implements OnInit {
   readonly selectedStaff = this.store.selectSignal(selectSelectedStaff);
   readonly searchTerm = signal('');
   readonly calendarView = signal<'week' | 'month'>('week');
+  readonly calendarScope = signal<'all' | 'personal'>('all');
   readonly calendarDate = signal(new Date());
+  readonly dateRangeError = signal<string | null>(null);
   readonly editingEntry = signal<StaffCalendarEntry | null>(null);
   readonly calendarDays = computed(() => this.createCalendarDays(this.calendarDate()));
   readonly monthDays = computed(() =>
@@ -74,6 +76,7 @@ export class StaffComponent implements OnInit {
 
   readonly calendarForm = this.fb.nonNullable.group({
     date: [this.calendarDays()[0].date, Validators.required],
+    endDate: [this.calendarDays()[0].date, Validators.required],
     staffId: ['', Validators.required],
     type: this.fb.nonNullable.control<CalendarEntryType>('availability'),
     title: ['', Validators.required],
@@ -96,6 +99,7 @@ export class StaffComponent implements OnInit {
 
   selectStaff(member: Staff): void {
     this.store.dispatch(StaffActions.selectStaff({ staffId: member.id }));
+    this.calendarScope.set('personal');
     this.populateDetails(member);
     this.clearCalendarForm();
   }
@@ -116,15 +120,22 @@ export class StaffComponent implements OnInit {
   }
 
   entriesForDay(date: string): StaffCalendarEntry[] {
-    return this.selectedStaff()?.calendar.filter((entry) => entry.date === date) ?? [];
+    return this.selectedStaff()?.calendar.filter((entry) => this.entryOccursOnDate(entry, date)) ?? [];
   }
 
   staffEntriesForDay(date: string): Array<{ member: Staff; entry: StaffCalendarEntry }> {
     return this.staff().flatMap((member) =>
       member.calendar
-        .filter((entry) => entry.date === date)
+        .filter((entry) => this.entryOccursOnDate(entry, date))
         .map((entry) => ({ member, entry }))
     );
+  }
+
+  visibleStaffEntriesForDay(date: string): Array<{ member: Staff; entry: StaffCalendarEntry }> {
+    const entries = this.staffEntriesForDay(date);
+    return this.calendarScope() === 'personal'
+      ? entries.filter((item) => item.member.id === this.selectedStaff()?.id)
+      : entries;
   }
 
   holidayForDate(date: string): string | null {
@@ -132,9 +143,11 @@ export class StaffComponent implements OnInit {
   }
 
   startEntryForDay(date: string): void {
+    this.dateRangeError.set(null);
     this.editingEntry.set(null);
     this.calendarForm.reset({
       date,
+      endDate: date,
       staffId: this.selectedStaff()?.id ?? this.staff()[0]?.id ?? '',
       type: 'availability',
       title: '',
@@ -145,9 +158,11 @@ export class StaffComponent implements OnInit {
   }
 
   editCalendarEntry(entry: StaffCalendarEntry): void {
+    this.dateRangeError.set(null);
     this.editingEntry.set(entry);
     this.calendarForm.reset({
       date: entry.date,
+      endDate: entry.endDate ?? entry.date,
       staffId: this.selectedStaff()?.id ?? '',
       type: entry.type,
       title: entry.title,
@@ -159,11 +174,21 @@ export class StaffComponent implements OnInit {
     if (this.calendarForm.invalid) return this.calendarForm.markAllAsTouched();
     const current = this.editingEntry();
     const formValue = this.calendarForm.getRawValue();
+    if (formValue.endDate < formValue.date) {
+      this.dateRangeError.set('End date must be on or after the start date.');
+      return;
+    }
+    if (!this.rangeIncludesWeekday(formValue.date, formValue.endDate)) {
+      this.dateRangeError.set('The selected range contains only weekend days.');
+      return;
+    }
+    this.dateRangeError.set(null);
     const member = this.staff().find((item) => item.id === formValue.staffId);
     if (!member) return;
     const entry: StaffCalendarEntry = {
       id: current?.id ?? `event-${Date.now()}`,
       date: formValue.date,
+      endDate: formValue.endDate,
       type: formValue.type,
       title: formValue.title,
       startTime: formValue.startTime,
@@ -191,8 +216,15 @@ export class StaffComponent implements OnInit {
   deleteCalendarEntry(entryId: string): void {
     const member = this.selectedStaff();
     if (!member) return;
-    this.store.dispatch(StaffActions.deleteCalendarEntry({ staffId: member.id, entryId }));
+    this.removeCalendarEntry(member.id, entryId);
     this.clearCalendarForm();
+  }
+
+  removeCalendarEntry(staffId: string, entryId: string): void {
+    this.store.dispatch(StaffActions.deleteCalendarEntry({ staffId, entryId }));
+    if (this.editingEntry()?.id === entryId) {
+      this.clearCalendarForm();
+    }
   }
 
   clearCalendarForm(): void {
@@ -326,5 +358,26 @@ export class StaffComponent implements OnInit {
 
   private formatLocalDate(date: Date): string {
     return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+  }
+
+  private entryOccursOnDate(entry: StaffCalendarEntry, date: string): boolean {
+    const current = this.parseLocalDate(date);
+    if (current.getDay() === 0 || current.getDay() === 6) {
+      return false;
+    }
+
+    return date >= entry.date && date <= (entry.endDate ?? entry.date);
+  }
+
+  private rangeIncludesWeekday(startDate: string, endDate: string): boolean {
+    const current = this.parseLocalDate(startDate);
+    const end = this.parseLocalDate(endDate);
+    while (current <= end) {
+      if (current.getDay() !== 0 && current.getDay() !== 6) {
+        return true;
+      }
+      current.setDate(current.getDate() + 1);
+    }
+    return false;
   }
 }

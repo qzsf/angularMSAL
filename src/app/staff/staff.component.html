@@ -74,6 +74,16 @@
             <div class="schedule-toolbar">
               <div><h3>Schedule</h3><p>{{ calendarPeriodTitle() }}</p></div>
               <div class="calendar-controls">
+                <div class="scope-switch btn-group" role="group" aria-label="Calendar people">
+                  <button class="btn btn-sm" [class.btn-dark]="calendarScope() === 'all'"
+                    [class.btn-outline-secondary]="calendarScope() !== 'all'" type="button"
+                    (click)="calendarScope.set('all')">All staff</button>
+                  <button class="btn btn-sm" [class.btn-dark]="calendarScope() === 'personal'"
+                    [class.btn-outline-secondary]="calendarScope() !== 'personal'" type="button"
+                    (click)="calendarScope.set('personal')">
+                    {{ selectedStaff()?.firstName }} only
+                  </button>
+                </div>
                 <div class="btn-group" role="group" aria-label="Calendar navigation">
                   <button class="btn btn-outline-secondary btn-sm" type="button"
                     title="Previous period" (click)="previousPeriod()"><i class="bi bi-chevron-left"></i></button>
@@ -108,14 +118,27 @@
                           <i class="bi bi-flag-fill"></i><span>{{ holiday }}</span>
                         </div>
                       }
-                      @for (entry of entriesForDay(day.date); track entry.id) {
-                        <button type="button" class="calendar-entry" [class.entry-leave]="entry.type === 'leave'"
-                          [class.entry-remark]="entry.type === 'remark'" [class.entry-comment]="entry.type === 'comment'"
-                          (click)="editCalendarEntry(entry)">
-                          <strong>{{ entry.title }}</strong>
-                          @if (entry.startTime) { <span>{{ entry.startTime }} – {{ entry.endTime }}</span> }
-                          @if (entry.notes) { <small>{{ entry.notes }}</small> }
-                        </button>
+                      @for (item of visibleStaffEntriesForDay(day.date); track item.member.id + item.entry.id) {
+                        <div class="calendar-entry-row">
+                          <button type="button" class="calendar-entry"
+                            [class.entry-leave]="item.entry.type === 'leave'"
+                            [class.entry-remark]="item.entry.type === 'remark'"
+                            [class.entry-comment]="item.entry.type === 'comment'"
+                            (click)="selectStaff(item.member); editCalendarEntry(item.entry)">
+                            <span class="entry-person">
+                              <span class="mini-avatar" [style.background]="item.member.accent">{{ item.member.initials }}</span>
+                              <strong>{{ item.member.firstName }}</strong>
+                            </span>
+                            <strong>{{ item.entry.title }}</strong>
+                            @if (item.entry.startTime) { <span>{{ item.entry.startTime }} – {{ item.entry.endTime }}</span> }
+                            @if (item.entry.notes) { <small>{{ item.entry.notes }}</small> }
+                          </button>
+                          <button class="entry-delete-button" type="button"
+                            [title]="'Remove ' + item.member.firstName + ' from this date'"
+                            (click)="removeCalendarEntry(item.member.id, item.entry.id)">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
                       } @empty {
                         <button class="empty-day" type="button" title="Add calendar entry" (click)="startEntryForDay(day.date)"><i class="bi bi-plus-lg"></i></button>
                       }
@@ -150,16 +173,23 @@
                           <i class="bi bi-flag-fill"></i><span>{{ holiday }}</span>
                         </div>
                       }
-                      @for (item of staffEntriesForDay(day.date); track item.member.id + item.entry.id) {
-                        <button class="month-event" type="button"
-                          [class.entry-leave]="item.entry.type === 'leave'"
-                          [class.entry-remark]="item.entry.type === 'remark'"
-                          [class.entry-comment]="item.entry.type === 'comment'"
-                          [title]="item.member.firstName + ' ' + item.member.lastName + ': ' + item.entry.title"
-                          (click)="selectStaff(item.member); editCalendarEntry(item.entry)">
-                          <span class="mini-avatar" [style.background]="item.member.accent">{{ item.member.initials }}</span>
-                          <span><strong>{{ item.member.firstName }}</strong> {{ item.entry.title }}</span>
-                        </button>
+                      @for (item of visibleStaffEntriesForDay(day.date); track item.member.id + item.entry.id) {
+                        <div class="month-event-row">
+                          <button class="month-event" type="button"
+                            [class.entry-leave]="item.entry.type === 'leave'"
+                            [class.entry-remark]="item.entry.type === 'remark'"
+                            [class.entry-comment]="item.entry.type === 'comment'"
+                            [title]="item.member.firstName + ' ' + item.member.lastName + ': ' + item.entry.title"
+                            (click)="selectStaff(item.member); editCalendarEntry(item.entry)">
+                            <span class="mini-avatar" [style.background]="item.member.accent">{{ item.member.initials }}</span>
+                            <span><strong>{{ item.member.firstName }}</strong> {{ item.entry.title }}</span>
+                          </button>
+                          <button class="entry-delete-button entry-delete-button--compact" type="button"
+                            [title]="'Remove ' + item.member.firstName + ' from this date'"
+                            (click)="removeCalendarEntry(item.member.id, item.entry.id)">
+                            <i class="bi bi-trash"></i>
+                          </button>
+                        </div>
                       }
                     </div>
                   </section>
@@ -169,13 +199,14 @@
 
             <div class="calendar-editor">
               <div class="editor-heading">
-                <div><h3>{{ editingEntry() ? 'Edit calendar entry' : 'Add calendar entry' }}</h3><p>Availability, leave, remarks, and internal comments</p></div>
+                <div><h3>{{ editingEntry() ? 'Edit calendar entry' : 'Add calendar entry' }}</h3><p>Date ranges automatically exclude Saturdays and Sundays</p></div>
                 @if (editingEntry(); as entry) {
                   <button class="btn btn-outline-danger btn-sm" type="button" title="Delete entry" (click)="deleteCalendarEntry(entry.id)"><i class="bi bi-trash"></i></button>
                 }
               </div>
               <form class="editor-form" [formGroup]="calendarForm" (ngSubmit)="saveCalendarEntry()">
-                <div><label class="form-label" for="entry-date">Date</label><input id="entry-date" class="form-control" type="date" formControlName="date" /></div>
+                <div><label class="form-label" for="entry-date">Start date</label><input id="entry-date" class="form-control" type="date" formControlName="date" /></div>
+                <div><label class="form-label" for="entry-end-date">End date</label><input id="entry-end-date" class="form-control" type="date" formControlName="endDate" /></div>
                 <div><label class="form-label" for="entry-staff">Staff</label>
                   <select id="entry-staff" class="form-select" formControlName="staffId">
                     @for (staffMember of staff(); track staffMember.id) {
@@ -189,6 +220,9 @@
                 <div><label class="form-label" for="entry-end">End</label><input id="entry-end" class="form-control" type="time" formControlName="endTime" /></div>
                 <div class="editor-notes"><label class="form-label" for="entry-notes">Notes</label><input id="entry-notes" class="form-control" placeholder="Add a remark or internal comment" formControlName="notes" /></div>
                 <div class="editor-actions"><button class="btn btn-light" type="button" (click)="clearCalendarForm()">Clear</button><button class="btn btn-primary" type="submit">{{ editingEntry() ? 'Update entry' : 'Add staff' }}</button></div>
+                @if (dateRangeError(); as error) {
+                  <div class="date-range-error"><i class="bi bi-exclamation-circle"></i>{{ error }}</div>
+                }
               </form>
             </div>
           </div>
