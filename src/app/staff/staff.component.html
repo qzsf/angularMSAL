@@ -2,11 +2,20 @@
   <header class="topbar">
     <div><div class="brand">Northstar Office</div><h1>Staff workspace</h1></div>
     <div class="topbar-actions">
+      <div class="workspace-tabs btn-group" role="group" aria-label="Staff views">
+        <button class="btn btn-sm" [class.btn-dark]="workspaceView() === 'calendar'"
+          [class.btn-outline-secondary]="workspaceView() !== 'calendar'" type="button"
+          (click)="workspaceView.set('calendar')"><i class="bi bi-calendar3 me-1"></i>Schedule</button>
+        <button class="btn btn-sm" [class.btn-dark]="workspaceView() === 'skills'"
+          [class.btn-outline-secondary]="workspaceView() !== 'skills'" type="button"
+          (click)="workspaceView.set('skills')"><i class="bi bi-table me-1"></i>Skills table</button>
+      </div>
       <button class="btn btn-outline-secondary btn-sm" type="button" title="Notifications"><i class="bi bi-bell"></i></button>
       <div class="user-chip" aria-label="Signed in user">QC</div>
     </div>
   </header>
 
+  @if (workspaceView() === 'calendar') {
   <main class="workspace">
     <section class="staff-sidebar" aria-label="Staff groups">
       <div class="sidebar-heading">
@@ -65,6 +74,14 @@
               <div class="mb-3"><label class="form-label" for="staff-location">Location</label><input id="staff-location" class="form-control" formControlName="location" /></div>
               <div class="mb-4"><label class="form-label" for="staff-status">Current status</label>
                 <select id="staff-status" class="form-select" formControlName="status"><option>Available</option><option>Busy</option><option>On leave</option></select>
+              </div>
+              <div class="staff-skills mb-4">
+                <div class="form-label">Skills</div>
+                <div class="skill-list">
+                  @for (skill of member.skills; track skill) {
+                    <span class="skill-badge">{{ skill }}</span>
+                  }
+                </div>
               </div>
               <button class="btn btn-primary w-100" type="submit"><i class="bi bi-check2 me-1"></i>Save changes</button>
             </form>
@@ -197,14 +214,15 @@
               </div>
             }
 
-            <div class="calendar-editor">
-              <div class="editor-heading">
-                <div><h3>{{ editingEntry() ? 'Edit calendar entry' : 'Add calendar entry' }}</h3><p>Date ranges automatically exclude Saturdays and Sundays</p></div>
-                @if (editingEntry(); as entry) {
-                  <button class="btn btn-outline-danger btn-sm" type="button" title="Delete entry" (click)="deleteCalendarEntry(entry.id)"><i class="bi bi-trash"></i></button>
-                }
-              </div>
-              <form class="editor-form" [formGroup]="calendarForm" (ngSubmit)="saveCalendarEntry()">
+            @if (calendarEditorOpen()) {
+              <div class="calendar-editor">
+                <div class="editor-heading">
+                  <div><h3>{{ editingEntry() ? 'Edit calendar entry' : 'Add calendar entry' }}</h3><p>Date ranges automatically exclude Saturdays and Sundays</p></div>
+                  @if (editingEntry(); as entry) {
+                    <button class="btn btn-outline-danger btn-sm" type="button" title="Delete entry" (click)="deleteCalendarEntry(entry.id)"><i class="bi bi-trash"></i></button>
+                  }
+                </div>
+                <form class="editor-form" [formGroup]="calendarForm" (ngSubmit)="saveCalendarEntry()">
                 <div><label class="form-label" for="entry-date">Start date</label><input id="entry-date" class="form-control" type="date" formControlName="date" /></div>
                 <div><label class="form-label" for="entry-end-date">End date</label><input id="entry-end-date" class="form-control" type="date" formControlName="endDate" /></div>
                 <div><label class="form-label" for="entry-staff">Staff</label>
@@ -219,15 +237,86 @@
                 <div><label class="form-label" for="entry-start">Start</label><input id="entry-start" class="form-control" type="time" formControlName="startTime" /></div>
                 <div><label class="form-label" for="entry-end">End</label><input id="entry-end" class="form-control" type="time" formControlName="endTime" /></div>
                 <div class="editor-notes"><label class="form-label" for="entry-notes">Notes</label><input id="entry-notes" class="form-control" placeholder="Add a remark or internal comment" formControlName="notes" /></div>
-                <div class="editor-actions"><button class="btn btn-light" type="button" (click)="clearCalendarForm()">Clear</button><button class="btn btn-primary" type="submit">{{ editingEntry() ? 'Update entry' : 'Add staff' }}</button></div>
-                @if (dateRangeError(); as error) {
-                  <div class="date-range-error"><i class="bi bi-exclamation-circle"></i>{{ error }}</div>
-                }
-              </form>
-            </div>
+                  <div class="editor-actions"><button class="btn btn-light" type="button" (click)="clearCalendarForm()">Cancel</button><button class="btn btn-primary" type="submit">{{ editingEntry() ? 'Update entry' : 'Add staff' }}</button></div>
+                  @if (dateRangeError(); as error) {
+                    <div class="date-range-error"><i class="bi bi-exclamation-circle"></i>{{ error }}</div>
+                  }
+                </form>
+              </div>
+            }
           </div>
         </div>
       }
     </section>
   </main>
+  } @else {
+    <main class="skills-view">
+      <div class="skills-view-heading">
+        <div>
+          <h2>Staff skills directory</h2>
+          <p>{{ staff().length }} staff grouped by key skill</p>
+        </div>
+        <label class="skills-search">
+          <i class="bi bi-search"></i>
+          <input class="form-control" type="search" placeholder="Search name, role, or skill"
+            aria-label="Search skills directory" [value]="searchTerm()"
+            (input)="searchTerm.set($any($event.target).value)" />
+        </label>
+      </div>
+
+      <div class="skills-table-wrap">
+        <table class="skills-table">
+          <thead>
+            <tr>
+              <th class="drag-column"><span class="visually-hidden">Reorder</span></th>
+              <th><button type="button" (click)="sortStaffBy('name')">Staff <i class="bi" [class]="sortIcon('name')"></i></button></th>
+              <th><button type="button" (click)="sortStaffBy('role')">Role <i class="bi" [class]="sortIcon('role')"></i></button></th>
+              <th>Key skill</th>
+              <th>Skills</th>
+              <th><button type="button" (click)="sortStaffBy('location')">Location <i class="bi" [class]="sortIcon('location')"></i></button></th>
+              <th><button type="button" (click)="sortStaffBy('status')">Status <i class="bi" [class]="sortIcon('status')"></i></button></th>
+            </tr>
+          </thead>
+          @for (skillGroup of skillStaffGroups(); track skillGroup.keySkill) {
+            <tbody cdkDropList [cdkDropListData]="skillGroup.members"
+              (cdkDropListDropped)="dropSkillStaff($event, skillGroup.keySkill)">
+              <tr class="skill-group-row">
+                <th colspan="7">
+                  <span>{{ skillGroup.keySkill }}</span>
+                  <small>{{ skillGroup.members.length }} staff</small>
+                </th>
+              </tr>
+              @for (member of skillGroup.members; track member.id) {
+                <tr class="skill-staff-row" cdkDrag [cdkDragData]="member">
+                  <td class="drag-column">
+                    <button class="table-drag-handle" type="button" cdkDragHandle title="Drag to reorder">
+                      <i class="bi bi-grip-vertical"></i>
+                    </button>
+                  </td>
+                  <td>
+                    <button class="table-person" type="button"
+                      (click)="selectStaff(member); workspaceView.set('calendar')">
+                      <span class="avatar" [style.background]="member.accent">{{ member.initials }}</span>
+                      <span><strong>{{ member.firstName }} {{ member.lastName }}</strong><small>{{ member.email }}</small></span>
+                    </button>
+                  </td>
+                  <td>{{ member.role }}</td>
+                  <td><span class="key-skill-badge">{{ member.keySkill }}</span></td>
+                  <td><div class="table-skill-list">@for (skill of member.skills; track skill) { <span>{{ skill }}</span> }</div></td>
+                  <td>{{ member.location }}</td>
+                  <td><span class="table-status" [class.busy]="member.status === 'Busy'"
+                    [class.leave]="member.status === 'On leave'"><i></i>{{ member.status }}</span></td>
+                </tr>
+              }
+            </tbody>
+          }
+        </table>
+      </div>
+      <div class="manual-order-note">
+        <i class="bi bi-grip-vertical"></i>
+        Drag rows within a key-skill group to set a manual order.
+        @if (staffSortKey() !== 'manual') { Dragging switches the table back to manual order. }
+      </div>
+    </main>
+  }
 </div>

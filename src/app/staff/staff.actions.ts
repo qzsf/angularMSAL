@@ -7,6 +7,7 @@ export const StaffActions = createActionGroup({
     'Load Staff': emptyProps(),
     'Select Staff': props<{ staffId: string }>(),
     'Move Staff': props<{ staffId: string; targetGroupId: string; targetIndex: number }>(),
+    'Reorder Skill Staff': props<{ keySkill: string; orderedIds: string[] }>(),
     'Update Staff Details': props<{
       staffId: string;
       changes: { email: string; phone: string; location: string; status: StaffStatus };

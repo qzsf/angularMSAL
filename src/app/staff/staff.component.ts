@@ -9,6 +9,8 @@ import { selectAllStaff, selectSelectedStaff, selectStaffGroups } from './staff.
 
 interface CalendarDay { date: string; day: string; label: string }
 interface MonthDay { date: string; dayNumber: number; inCurrentMonth: boolean }
+interface SkillStaffGroup { keySkill: string; members: Staff[] }
+type StaffSortKey = 'manual' | 'name' | 'role' | 'status' | 'location';
 
 @Component({
   selector: 'app-staff',
@@ -24,9 +26,13 @@ export class StaffComponent implements OnInit {
   readonly groups = this.store.selectSignal(selectStaffGroups);
   readonly selectedStaff = this.store.selectSignal(selectSelectedStaff);
   readonly searchTerm = signal('');
+  readonly workspaceView = signal<'calendar' | 'skills'>('calendar');
+  readonly staffSortKey = signal<StaffSortKey>('manual');
+  readonly staffSortDirection = signal<'asc' | 'desc'>('asc');
   readonly calendarView = signal<'week' | 'month'>('week');
   readonly calendarScope = signal<'all' | 'personal'>('all');
   readonly calendarDate = signal(new Date());
+  readonly calendarEditorOpen = signal(false);
   readonly dateRangeError = signal<string | null>(null);
   readonly editingEntry = signal<StaffCalendarEntry | null>(null);
   readonly calendarDays = computed(() => this.createCalendarDays(this.calendarDate()));
@@ -65,6 +71,19 @@ export class StaffComponent implements OnInit {
       ? this.staff().filter((member) =>
           `${member.firstName} ${member.lastName} ${member.role}`.toLowerCase().includes(query))
       : this.staff();
+  });
+  readonly skillStaffGroups = computed<SkillStaffGroup[]>(() => {
+    const grouped = new Map<string, Staff[]>();
+    for (const member of this.filteredStaff()) {
+      grouped.set(member.keySkill, [...(grouped.get(member.keySkill) ?? []), member]);
+    }
+
+    return [...grouped.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([keySkill, members]) => ({
+        keySkill,
+        members: this.sortSkillMembers(members),
+      }));
   });
 
   readonly detailsForm = this.fb.nonNullable.group({
@@ -111,6 +130,28 @@ export class StaffComponent implements OnInit {
     }));
   }
 
+  dropSkillStaff(event: CdkDragDrop<Staff[]>, keySkill: string): void {
+    const orderedIds = event.container.data.map((member) => member.id);
+    const [movingId] = orderedIds.splice(event.previousIndex, 1);
+    orderedIds.splice(event.currentIndex, 0, movingId);
+    this.staffSortKey.set('manual');
+    this.store.dispatch(StaffActions.reorderSkillStaff({ keySkill, orderedIds }));
+  }
+
+  sortStaffBy(key: Exclude<StaffSortKey, 'manual'>): void {
+    if (this.staffSortKey() === key) {
+      this.staffSortDirection.update((direction) => direction === 'asc' ? 'desc' : 'asc');
+    } else {
+      this.staffSortKey.set(key);
+      this.staffSortDirection.set('asc');
+    }
+  }
+
+  sortIcon(key: Exclude<StaffSortKey, 'manual'>): string {
+    if (this.staffSortKey() !== key) return 'bi bi-arrow-down-up';
+    return this.staffSortDirection() === 'asc' ? 'bi bi-sort-up' : 'bi bi-sort-down';
+  }
+
   saveDetails(): void {
     const member = this.selectedStaff();
     if (!member || this.detailsForm.invalid) return this.detailsForm.markAllAsTouched();
@@ -143,6 +184,7 @@ export class StaffComponent implements OnInit {
   }
 
   startEntryForDay(date: string): void {
+    this.calendarEditorOpen.set(true);
     this.dateRangeError.set(null);
     this.editingEntry.set(null);
     this.calendarForm.reset({
@@ -158,6 +200,7 @@ export class StaffComponent implements OnInit {
   }
 
   editCalendarEntry(entry: StaffCalendarEntry): void {
+    this.calendarEditorOpen.set(true);
     this.dateRangeError.set(null);
     this.editingEntry.set(entry);
     this.calendarForm.reset({
@@ -228,7 +271,20 @@ export class StaffComponent implements OnInit {
   }
 
   clearCalendarForm(): void {
-    this.startEntryForDay(this.calendarDays()[0].date);
+    this.calendarEditorOpen.set(false);
+    this.dateRangeError.set(null);
+    this.editingEntry.set(null);
+    const date = this.calendarDays()[0].date;
+    this.calendarForm.reset({
+      date,
+      endDate: date,
+      staffId: this.selectedStaff()?.id ?? this.staff()[0]?.id ?? '',
+      type: 'availability',
+      title: '',
+      startTime: '09:00',
+      endTime: '17:00',
+      notes: '',
+    });
   }
 
   previousPeriod(): void {
@@ -379,5 +435,20 @@ export class StaffComponent implements OnInit {
       current.setDate(current.getDate() + 1);
     }
     return false;
+  }
+
+  private sortSkillMembers(members: Staff[]): Staff[] {
+    const key = this.staffSortKey();
+    if (key === 'manual') return members;
+    const direction = this.staffSortDirection() === 'asc' ? 1 : -1;
+    return [...members].sort((left, right) => {
+      const leftValue = key === 'name'
+        ? `${left.lastName} ${left.firstName}`
+        : left[key];
+      const rightValue = key === 'name'
+        ? `${right.lastName} ${right.firstName}`
+        : right[key];
+      return leftValue.localeCompare(rightValue) * direction;
+    });
   }
 }

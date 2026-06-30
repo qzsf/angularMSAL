@@ -17,6 +17,8 @@ export interface Staff {
   firstName: string;
   lastName: string;
   role: string;
+  keySkill: string;
+  skills: string[];
   email: string;
   phone: string;
   location: string;
