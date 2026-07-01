@@ -16,246 +16,11 @@
   </header>
 
   @if (workspaceView() === 'calendar') {
-  <main class="workspace">
-    <section class="staff-sidebar" aria-label="Staff groups">
-      <div class="sidebar-heading">
-        <div><h2>Staff</h2><span>{{ staff().length }} people</span></div>
-        <button class="btn btn-primary btn-sm" type="button"><i class="bi bi-person-plus me-1"></i>Add staff</button>
-      </div>
-      <label class="search-box">
-        <i class="bi bi-search"></i>
-        <input class="form-control" type="search" placeholder="Search staff" aria-label="Search staff"
-          [value]="searchTerm()" (input)="searchTerm.set($any($event.target).value)" />
-      </label>
-
-      <div class="group-list" cdkDropListGroup>
-        @for (group of groups(); track group.id) {
-          <section class="staff-group">
-            <div class="group-heading">
-              <span class="group-marker" [style.background]="group.color"></span>
-              <h3>{{ group.name }}</h3><span>{{ staffForGroup(group.id).length }}</span>
-              <button class="icon-button" type="button" title="Group options"><i class="bi bi-three-dots"></i></button>
-            </div>
-            <div class="staff-drop-list" [id]="group.id" cdkDropList
-              [cdkDropListData]="staffForGroup(group.id)" [cdkDropListConnectedTo]="connectedGroupIds()"
-              (cdkDropListDropped)="drop($event, group)">
-              @for (member of staffForGroup(group.id); track member.id) {
-                <button class="staff-row" [class.selected]="selectedStaff()?.id === member.id"
-                  type="button" cdkDrag [cdkDragData]="member" (click)="selectStaff(member)">
-                  <i class="bi bi-grip-vertical drag-handle" cdkDragHandle></i>
-                  <span class="avatar" [style.background]="member.accent">{{ member.initials }}</span>
-                  <span class="staff-copy"><strong>{{ member.firstName }} {{ member.lastName }}</strong><small>{{ member.role }}</small></span>
-                  <span class="status-dot" [class.busy]="member.status === 'Busy'"
-                    [class.leave]="member.status === 'On leave'" [title]="member.status"></span>
-                </button>
-              } @empty { <div class="empty-group">Drop staff here</div> }
-            </div>
-          </section>
-        }
-      </div>
-    </section>
-
-    <section class="staff-detail">
-      @if (selectedStaff(); as member) {
-        <div class="detail-header">
-          <div class="profile-title">
-            <span class="avatar avatar-large" [style.background]="member.accent">{{ member.initials }}</span>
-            <div><h2>{{ member.firstName }} {{ member.lastName }}</h2><p>{{ member.role }} · {{ member.location }}</p></div>
-          </div>
-          <span class="status-badge" [class.leave-badge]="member.status === 'On leave'"><span></span>{{ member.status }}</span>
-        </div>
-
-        <div class="detail-grid">
-          <aside class="profile-panel">
-            <div class="panel-heading"><h3>Staff information</h3><i class="bi bi-person-vcard"></i></div>
-            <form [formGroup]="detailsForm" (ngSubmit)="saveDetails()">
-              <div class="mb-3"><label class="form-label" for="staff-email">Email</label><input id="staff-email" class="form-control" type="email" formControlName="email" /></div>
-              <div class="mb-3"><label class="form-label" for="staff-phone">Phone</label><input id="staff-phone" class="form-control" type="tel" formControlName="phone" /></div>
-              <div class="mb-3"><label class="form-label" for="staff-location">Location</label><input id="staff-location" class="form-control" formControlName="location" /></div>
-              <div class="mb-4"><label class="form-label" for="staff-status">Current status</label>
-                <select id="staff-status" class="form-select" formControlName="status"><option>Available</option><option>Busy</option><option>On leave</option></select>
-              </div>
-              <div class="staff-skills mb-4">
-                <div class="form-label">Skills</div>
-                <div class="skill-list">
-                  @for (skill of member.skills; track skill) {
-                    <span class="skill-badge">{{ skill }}</span>
-                  }
-                </div>
-              </div>
-              <button class="btn btn-primary w-100" type="submit"><i class="bi bi-check2 me-1"></i>Save changes</button>
-            </form>
-          </aside>
-
-          <div class="schedule-panel">
-            <div class="schedule-toolbar">
-              <div><h3>Schedule</h3><p>{{ calendarPeriodTitle() }}</p></div>
-              <div class="calendar-controls">
-                <div class="scope-switch btn-group" role="group" aria-label="Calendar people">
-                  <button class="btn btn-sm" [class.btn-dark]="calendarScope() === 'all'"
-                    [class.btn-outline-secondary]="calendarScope() !== 'all'" type="button"
-                    (click)="calendarScope.set('all')">All staff</button>
-                  <button class="btn btn-sm" [class.btn-dark]="calendarScope() === 'personal'"
-                    [class.btn-outline-secondary]="calendarScope() !== 'personal'" type="button"
-                    (click)="calendarScope.set('personal')">
-                    {{ selectedStaff()?.firstName }} only
-                  </button>
-                </div>
-                <div class="btn-group" role="group" aria-label="Calendar navigation">
-                  <button class="btn btn-outline-secondary btn-sm" type="button"
-                    title="Previous period" (click)="previousPeriod()"><i class="bi bi-chevron-left"></i></button>
-                  <button class="btn btn-outline-secondary btn-sm" type="button"
-                    (click)="goToToday()">Today</button>
-                  <button class="btn btn-outline-secondary btn-sm" type="button"
-                    title="Next period" (click)="nextPeriod()"><i class="bi bi-chevron-right"></i></button>
-                </div>
-                <div class="view-switch btn-group" role="group" aria-label="Calendar view">
-                  <button class="btn btn-sm" [class.btn-primary]="calendarView() === 'week'"
-                    [class.btn-outline-secondary]="calendarView() !== 'week'" type="button"
-                    (click)="calendarView.set('week')">Week</button>
-                  <button class="btn btn-sm" [class.btn-primary]="calendarView() === 'month'"
-                    [class.btn-outline-secondary]="calendarView() !== 'month'" type="button"
-                    (click)="calendarView.set('month')">Month</button>
-                </div>
-              </div>
-            </div>
-
-            @if (calendarView() === 'week') {
-              <div class="calendar-grid">
-                @for (day of calendarDays(); track day.date) {
-                  <section class="calendar-day">
-                    <div class="day-heading">
-                      <span>{{ day.day }}</span><strong>{{ day.label }}</strong>
-                      <button class="date-add-button" type="button" title="Add staff to this date"
-                        (click)="startEntryForDay(day.date)"><i class="bi bi-plus-lg"></i></button>
-                    </div>
-                    <div class="day-body">
-                      @if (holidayForDate(day.date); as holiday) {
-                        <div class="holiday-marker" [title]="holiday">
-                          <i class="bi bi-flag-fill"></i><span>{{ holiday }}</span>
-                        </div>
-                      }
-                      @for (item of visibleStaffEntriesForDay(day.date); track item.member.id + item.entry.id) {
-                        <div class="calendar-entry-row">
-                          <button type="button" class="calendar-entry"
-                            [class.entry-leave]="item.entry.type === 'leave'"
-                            [class.entry-remark]="item.entry.type === 'remark'"
-                            [class.entry-comment]="item.entry.type === 'comment'"
-                            (click)="selectStaff(item.member); editCalendarEntry(item.entry)">
-                            <span class="entry-person">
-                              <span class="mini-avatar" [style.background]="item.member.accent">{{ item.member.initials }}</span>
-                              <strong>{{ item.member.firstName }}</strong>
-                            </span>
-                            <strong>{{ item.entry.title }}</strong>
-                            @if (item.entry.startTime) { <span>{{ item.entry.startTime }} – {{ item.entry.endTime }}</span> }
-                            @if (item.entry.notes) { <small>{{ item.entry.notes }}</small> }
-                          </button>
-                          <button class="entry-delete-button" type="button"
-                            [title]="'Remove ' + item.member.firstName + ' from this date'"
-                            (click)="removeCalendarEntry(item.member.id, item.entry.id)">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </div>
-                      } @empty {
-                        <button class="empty-day" type="button" title="Add calendar entry" (click)="startEntryForDay(day.date)"><i class="bi bi-plus-lg"></i></button>
-                      }
-                    </div>
-                  </section>
-                }
-              </div>
-            } @else {
-              <div class="month-title">
-                <div><h3>{{ calendarPeriodTitle() }}</h3><p>All staff schedules and availability</p></div>
-                <div class="month-legend">
-                  <span><i class="legend-dot availability-dot"></i>Availability</span>
-                  <span><i class="legend-dot leave-dot"></i>Leave</span>
-                  <span><i class="legend-dot remark-dot"></i>Remark</span>
-                  <span><i class="bi bi-flag-fill holiday-legend-icon"></i>Federal holiday</span>
-                </div>
-              </div>
-              <div class="month-calendar">
-                @for (weekday of ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']; track weekday) {
-                  <div class="month-weekday">{{ weekday }}</div>
-                }
-                @for (day of monthDays(); track day.date) {
-                  <section class="month-day" [class.outside-month]="!day.inCurrentMonth">
-                    <div class="month-day-heading">
-                      <span class="month-day-number">{{ day.dayNumber }}</span>
-                      <button class="date-add-button" type="button" title="Add staff to this date"
-                        (click)="startEntryForDay(day.date)"><i class="bi bi-plus-lg"></i></button>
-                    </div>
-                    <div class="month-events">
-                      @if (holidayForDate(day.date); as holiday) {
-                        <div class="month-holiday" [title]="holiday">
-                          <i class="bi bi-flag-fill"></i><span>{{ holiday }}</span>
-                        </div>
-                      }
-                      @for (item of visibleStaffEntriesForDay(day.date); track item.member.id + item.entry.id) {
-                        <div class="month-event-row">
-                          <button class="month-event" type="button"
-                            [class.entry-leave]="item.entry.type === 'leave'"
-                            [class.entry-remark]="item.entry.type === 'remark'"
-                            [class.entry-comment]="item.entry.type === 'comment'"
-                            [title]="item.member.firstName + ' ' + item.member.lastName + ': ' + item.entry.title"
-                            (click)="selectStaff(item.member); editCalendarEntry(item.entry)">
-                            <span class="mini-avatar" [style.background]="item.member.accent">{{ item.member.initials }}</span>
-                            <span><strong>{{ item.member.firstName }}</strong> {{ item.entry.title }}</span>
-                          </button>
-                          <button class="entry-delete-button entry-delete-button--compact" type="button"
-                            [title]="'Remove ' + item.member.firstName + ' from this date'"
-                            (click)="removeCalendarEntry(item.member.id, item.entry.id)">
-                            <i class="bi bi-trash"></i>
-                          </button>
-                        </div>
-                      }
-                    </div>
-                  </section>
-                }
-              </div>
-            }
-
-            @if (calendarEditorOpen()) {
-              <div class="calendar-editor">
-                <div class="editor-heading">
-                  <div><h3>{{ editingEntry() ? 'Edit calendar entry' : 'Add calendar entry' }}</h3><p>Date ranges automatically exclude Saturdays and Sundays</p></div>
-                  @if (editingEntry(); as entry) {
-                    <button class="btn btn-outline-danger btn-sm" type="button" title="Delete entry" (click)="deleteCalendarEntry(entry.id)"><i class="bi bi-trash"></i></button>
-                  }
-                </div>
-                <form class="editor-form" [formGroup]="calendarForm" (ngSubmit)="saveCalendarEntry()">
-                <div><label class="form-label" for="entry-date">Start date</label><input id="entry-date" class="form-control" type="date" formControlName="date" /></div>
-                <div><label class="form-label" for="entry-end-date">End date</label><input id="entry-end-date" class="form-control" type="date" formControlName="endDate" /></div>
-                <div><label class="form-label" for="entry-staff">Staff</label>
-                  <select id="entry-staff" class="form-select" formControlName="staffId">
-                    @for (staffMember of staff(); track staffMember.id) {
-                      <option [value]="staffMember.id">{{ staffMember.firstName }} {{ staffMember.lastName }}</option>
-                    }
-                  </select>
-                </div>
-                <div><label class="form-label" for="entry-type">Type</label><select id="entry-type" class="form-select" formControlName="type"><option value="availability">Availability</option><option value="leave">Leave</option><option value="remark">Remark</option><option value="comment">Comment</option></select></div>
-                <div><label class="form-label" for="entry-title">Title</label><input id="entry-title" class="form-control" placeholder="What is happening?" formControlName="title" /></div>
-                <div><label class="form-label" for="entry-start">Start</label><input id="entry-start" class="form-control" type="time" formControlName="startTime" /></div>
-                <div><label class="form-label" for="entry-end">End</label><input id="entry-end" class="form-control" type="time" formControlName="endTime" /></div>
-                <div class="editor-notes"><label class="form-label" for="entry-notes">Notes</label><input id="entry-notes" class="form-control" placeholder="Add a remark or internal comment" formControlName="notes" /></div>
-                  <div class="editor-actions"><button class="btn btn-light" type="button" (click)="clearCalendarForm()">Cancel</button><button class="btn btn-primary" type="submit">{{ editingEntry() ? 'Update entry' : 'Add staff' }}</button></div>
-                  @if (dateRangeError(); as error) {
-                    <div class="date-range-error"><i class="bi bi-exclamation-circle"></i>{{ error }}</div>
-                  }
-                </form>
-              </div>
-            }
-          </div>
-        </div>
-      }
-    </section>
-  </main>
+    <app-staff-calendar />
   } @else {
     <main class="skills-view">
       <div class="skills-view-heading">
-        <div>
-          <h2>Staff skills directory</h2>
-          <p>{{ staff().length }} staff grouped by key skill</p>
-        </div>
+        <div><h2>Staff skills directory</h2><p>{{ staff().length }} staff grouped by key skill</p></div>
         <label class="skills-search">
           <i class="bi bi-search"></i>
           <input class="form-control" type="search" placeholder="Search name, role, or skill"
@@ -266,40 +31,25 @@
 
       <div class="skills-table-wrap">
         <table class="skills-table">
-          <thead>
-            <tr>
-              <th class="drag-column"><span class="visually-hidden">Reorder</span></th>
-              <th><button type="button" (click)="sortStaffBy('name')">Staff <i class="bi" [class]="sortIcon('name')"></i></button></th>
-              <th><button type="button" (click)="sortStaffBy('role')">Role <i class="bi" [class]="sortIcon('role')"></i></button></th>
-              <th>Key skill</th>
-              <th>Skills</th>
-              <th><button type="button" (click)="sortStaffBy('location')">Location <i class="bi" [class]="sortIcon('location')"></i></button></th>
-              <th><button type="button" (click)="sortStaffBy('status')">Status <i class="bi" [class]="sortIcon('status')"></i></button></th>
-            </tr>
-          </thead>
+          <thead><tr>
+            <th class="drag-column"><span class="visually-hidden">Reorder</span></th>
+            <th><button type="button" (click)="sortStaffBy('name')">Staff <i [class]="sortIcon('name')"></i></button></th>
+            <th><button type="button" (click)="sortStaffBy('role')">Role <i [class]="sortIcon('role')"></i></button></th>
+            <th>Key skill</th><th>Skills</th>
+            <th><button type="button" (click)="sortStaffBy('location')">Location <i [class]="sortIcon('location')"></i></button></th>
+            <th><button type="button" (click)="sortStaffBy('status')">Status <i [class]="sortIcon('status')"></i></button></th>
+          </tr></thead>
           @for (skillGroup of skillStaffGroups(); track skillGroup.keySkill) {
             <tbody cdkDropList [cdkDropListData]="skillGroup.members"
               (cdkDropListDropped)="dropSkillStaff($event, skillGroup.keySkill)">
-              <tr class="skill-group-row">
-                <th colspan="7">
-                  <span>{{ skillGroup.keySkill }}</span>
-                  <small>{{ skillGroup.members.length }} staff</small>
-                </th>
-              </tr>
+              <tr class="skill-group-row"><th colspan="7"><span>{{ skillGroup.keySkill }}</span><small>{{ skillGroup.members.length }} staff</small></th></tr>
               @for (member of skillGroup.members; track member.id) {
                 <tr class="skill-staff-row" cdkDrag [cdkDragData]="member">
-                  <td class="drag-column">
-                    <button class="table-drag-handle" type="button" cdkDragHandle title="Drag to reorder">
-                      <i class="bi bi-grip-vertical"></i>
-                    </button>
-                  </td>
-                  <td>
-                    <button class="table-person" type="button"
-                      (click)="selectStaff(member); workspaceView.set('calendar')">
-                      <span class="avatar" [style.background]="member.accent">{{ member.initials }}</span>
-                      <span><strong>{{ member.firstName }} {{ member.lastName }}</strong><small>{{ member.email }}</small></span>
-                    </button>
-                  </td>
+                  <td class="drag-column"><button class="table-drag-handle" type="button" cdkDragHandle title="Drag to reorder"><i class="bi bi-grip-vertical"></i></button></td>
+                  <td><button class="table-person" type="button" (click)="openStaffCalendar(member)">
+                    <span class="avatar" [style.background]="member.accent">{{ member.initials }}</span>
+                    <span><strong>{{ member.firstName }} {{ member.lastName }}</strong><small>{{ member.email }}</small></span>
+                  </button></td>
                   <td>{{ member.role }}</td>
                   <td><span class="key-skill-badge">{{ member.keySkill }}</span></td>
                   <td><div class="table-skill-list">@for (skill of member.skills; track skill) { <span>{{ skill }}</span> }</div></td>
@@ -312,11 +62,7 @@
           }
         </table>
       </div>
-      <div class="manual-order-note">
-        <i class="bi bi-grip-vertical"></i>
-        Drag rows within a key-skill group to set a manual order.
-        @if (staffSortKey() !== 'manual') { Dragging switches the table back to manual order. }
-      </div>
+      <div class="manual-order-note"><i class="bi bi-grip-vertical"></i> Drag rows within a key-skill group to set a manual order.</div>
     </main>
   }
 </div>

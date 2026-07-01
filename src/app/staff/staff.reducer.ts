@@ -82,6 +82,20 @@ export const staffReducer = createReducer(
     remaining.splice(anchor ? remaining.indexOf(anchor) : remaining.length, 0, { ...moving, groupId: targetGroupId });
     return { ...state, staff: remaining };
   }),
+  on(StaffActions.reorderStaffList, (state, { orderedIds }) => {
+    const orderedMembers = orderedIds
+      .map((id) => state.staff.find((member) => member.id === id))
+      .filter((member): member is Staff => Boolean(member));
+    if (orderedMembers.length !== orderedIds.length) return state;
+    const orderedIdSet = new Set(orderedIds);
+    let orderedIndex = 0;
+    return {
+      ...state,
+      staff: state.staff.map((member) =>
+        orderedIdSet.has(member.id) ? orderedMembers[orderedIndex++] : member
+      ),
+    };
+  }),
   on(StaffActions.reorderSkillStaff, (state, { keySkill, orderedIds }) => {
     const skillMembers = orderedIds
       .map((id) => state.staff.find((member) => member.id === id))
