@@ -16,8 +16,9 @@
       </div>
       <div class="staff-drop-list" cdkDropList [cdkDropListData]="filteredStaff()"
         (cdkDropListDropped)="dropStaff($event)">
-        @for (member of filteredStaff(); track member.id) {
-          <button class="staff-row" [class.selected]="selectedStaff()?.id === member.id"
+        @for (member of filteredStaff(); track member['staff-pin']) {
+          <button class="staff-row"
+            [class.selected]="selectedStaff()?.['staff-pin'] === member['staff-pin']"
             type="button" cdkDrag [cdkDragData]="member" (click)="selectStaff(member)">
             <i class="bi bi-grip-vertical drag-handle" cdkDragHandle></i>
             <span class="avatar" [style.background]="member.accent">{{ member.initials }}</span>
@@ -109,7 +110,7 @@
                           <i class="bi bi-flag-fill"></i><span>{{ holiday }}</span>
                         </div>
                       }
-                      @for (item of visibleStaffEntriesForDay(day.date); track item.member.id + item.entry.id) {
+                      @for (item of visibleStaffEntriesForDay(day.date); track item.member['staff-pin'] + item.entry.id) {
                         <div class="calendar-entry-row">
                           <button type="button" class="calendar-entry"
                             [class.entry-leave]="item.entry.type === 'leave'"
@@ -126,7 +127,7 @@
                           </button>
                           <button class="entry-delete-button" type="button"
                             [title]="'Remove ' + item.member.firstName + ' from this date'"
-                            (click)="removeCalendarEntry(item.member.id, item.entry.id)">
+                            (click)="removeCalendarEntry(item.member['staff-pin'], item.entry.id)">
                             <i class="bi bi-trash"></i>
                           </button>
                         </div>
@@ -164,7 +165,7 @@
                           <i class="bi bi-flag-fill"></i><span>{{ holiday }}</span>
                         </div>
                       }
-                      @for (item of visibleStaffEntriesForDay(day.date); track item.member.id + item.entry.id) {
+                      @for (item of visibleStaffEntriesForDay(day.date); track item.member['staff-pin'] + item.entry.id) {
                         <div class="month-event-row">
                           <button class="month-event" type="button"
                             [class.entry-leave]="item.entry.type === 'leave'"
@@ -177,7 +178,7 @@
                           </button>
                           <button class="entry-delete-button entry-delete-button--compact" type="button"
                             [title]="'Remove ' + item.member.firstName + ' from this date'"
-                            (click)="removeCalendarEntry(item.member.id, item.entry.id)">
+                            (click)="removeCalendarEntry(item.member['staff-pin'], item.entry.id)">
                             <i class="bi bi-trash"></i>
                           </button>
                         </div>
@@ -200,9 +201,9 @@
                 <div><label class="form-label" for="entry-date">Start date</label><input id="entry-date" class="form-control" type="date" formControlName="date" /></div>
                 <div><label class="form-label" for="entry-end-date">End date</label><input id="entry-end-date" class="form-control" type="date" formControlName="endDate" /></div>
                 <div><label class="form-label" for="entry-staff">Staff</label>
-                  <select id="entry-staff" class="form-select" formControlName="staffId">
-                    @for (staffMember of staff(); track staffMember.id) {
-                      <option [value]="staffMember.id">{{ staffMember.firstName }} {{ staffMember.lastName }}</option>
+                  <select id="entry-staff" class="form-select" formControlName="staffPin">
+                    @for (staffMember of staff(); track staffMember['staff-pin']) {
+                      <option [value]="staffMember['staff-pin']">{{ staffMember.firstName }} {{ staffMember.lastName }}</option>
                     }
                   </select>
                 </div>

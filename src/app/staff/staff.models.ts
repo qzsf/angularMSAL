@@ -13,7 +13,7 @@ export interface StaffCalendarEntry {
 }
 
 export interface Staff {
-  id: string;
+  'staff-pin': string;
   firstName: string;
   lastName: string;
   role: string;
@@ -27,6 +27,7 @@ export interface Staff {
   initials: string;
   accent: string;
   calendar: StaffCalendarEntry[];
+  [property: string]: unknown;
 }
 
 export interface StaffGroup {

@@ -43,7 +43,7 @@
             <tbody cdkDropList [cdkDropListData]="skillGroup.members"
               (cdkDropListDropped)="dropSkillStaff($event, skillGroup.keySkill)">
               <tr class="skill-group-row"><th colspan="7"><span>{{ skillGroup.keySkill }}</span><small>{{ skillGroup.members.length }} staff</small></th></tr>
-              @for (member of skillGroup.members; track member.id) {
+              @for (member of skillGroup.members; track member['staff-pin']) {
                 <tr class="skill-staff-row" cdkDrag [cdkDragData]="member">
                   <td class="drag-column"><button class="table-drag-handle" type="button" cdkDragHandle title="Drag to reorder"><i class="bi bi-grip-vertical"></i></button></td>
                   <td><button class="table-person" type="button" (click)="openStaffCalendar(member)">

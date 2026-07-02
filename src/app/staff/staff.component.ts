@@ -57,16 +57,16 @@ export class StaffComponent implements OnInit {
   }
 
   openStaffCalendar(member: Staff): void {
-    this.store.dispatch(StaffActions.selectStaff({ staffId: member.id }));
+    this.store.dispatch(StaffActions.selectStaff({ staffPin: member['staff-pin'] }));
     this.workspaceView.set('calendar');
   }
 
   dropSkillStaff(event: CdkDragDrop<Staff[]>, keySkill: string): void {
-    const orderedIds = event.container.data.map((member) => member.id);
-    const [movingId] = orderedIds.splice(event.previousIndex, 1);
-    orderedIds.splice(event.currentIndex, 0, movingId);
+    const orderedPins = event.container.data.map((member) => member['staff-pin']);
+    const [movingPin] = orderedPins.splice(event.previousIndex, 1);
+    orderedPins.splice(event.currentIndex, 0, movingPin);
     this.staffSortKey.set('manual');
-    this.store.dispatch(StaffActions.reorderSkillStaff({ keySkill, orderedIds }));
+    this.store.dispatch(StaffActions.reorderSkillStaff({ keySkill, orderedPins }));
   }
 
   sortStaffBy(key: Exclude<StaffSortKey, 'manual'>): void {

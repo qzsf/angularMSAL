@@ -5,16 +5,16 @@ export const StaffActions = createActionGroup({
   source: 'Staff',
   events: {
     'Load Staff': emptyProps(),
-    'Select Staff': props<{ staffId: string }>(),
-    'Move Staff': props<{ staffId: string; targetGroupId: string; targetIndex: number }>(),
-    'Reorder Staff List': props<{ orderedIds: string[] }>(),
-    'Reorder Skill Staff': props<{ keySkill: string; orderedIds: string[] }>(),
+    'Select Staff': props<{ staffPin: string }>(),
+    'Move Staff': props<{ staffPin: string; targetGroupId: string; targetIndex: number }>(),
+    'Reorder Staff List': props<{ orderedPins: string[] }>(),
+    'Reorder Skill Staff': props<{ keySkill: string; orderedPins: string[] }>(),
     'Update Staff Details': props<{
-      staffId: string;
+      staffPin: string;
       changes: { email: string; phone: string; location: string; status: StaffStatus };
     }>(),
-    'Add Calendar Entry': props<{ staffId: string; entry: StaffCalendarEntry }>(),
-    'Update Calendar Entry': props<{ staffId: string; entry: StaffCalendarEntry }>(),
-    'Delete Calendar Entry': props<{ staffId: string; entryId: string }>(),
+    'Add Calendar Entry': props<{ staffPin: string; entry: StaffCalendarEntry }>(),
+    'Update Calendar Entry': props<{ staffPin: string; entry: StaffCalendarEntry }>(),
+    'Delete Calendar Entry': props<{ staffPin: string; entryId: string }>(),
   },
 });

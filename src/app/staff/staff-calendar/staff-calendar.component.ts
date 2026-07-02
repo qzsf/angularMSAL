@@ -69,7 +69,7 @@ export class StaffCalendarComponent implements OnInit {
   readonly calendarForm = this.fb.nonNullable.group({
     date: [this.calendarDays()[0].date, Validators.required],
     endDate: [this.calendarDays()[0].date, Validators.required],
-    staffId: ['', Validators.required],
+    staffPin: ['', Validators.required],
     type: this.fb.nonNullable.control<CalendarEntryType>('availability'),
     title: ['', Validators.required],
     startTime: ['09:00'],
@@ -84,16 +84,16 @@ export class StaffCalendarComponent implements OnInit {
   }
 
   selectStaff(member: Staff): void {
-    this.store.dispatch(StaffActions.selectStaff({ staffId: member.id }));
+    this.store.dispatch(StaffActions.selectStaff({ staffPin: member['staff-pin'] }));
     this.calendarScope.set('personal');
     this.clearCalendarForm();
   }
 
   dropStaff(event: CdkDragDrop<Staff[]>): void {
-    const orderedIds = event.container.data.map((member) => member.id);
-    const [movingId] = orderedIds.splice(event.previousIndex, 1);
-    orderedIds.splice(event.currentIndex, 0, movingId);
-    this.store.dispatch(StaffActions.reorderStaffList({ orderedIds }));
+    const orderedPins = event.container.data.map((member) => member['staff-pin']);
+    const [movingPin] = orderedPins.splice(event.previousIndex, 1);
+    orderedPins.splice(event.currentIndex, 0, movingPin);
+    this.store.dispatch(StaffActions.reorderStaffList({ orderedPins }));
   }
 
 
@@ -112,7 +112,9 @@ export class StaffCalendarComponent implements OnInit {
   visibleStaffEntriesForDay(date: string): Array<{ member: Staff; entry: StaffCalendarEntry }> {
     const entries = this.staffEntriesForDay(date);
     return this.calendarScope() === 'personal'
-      ? entries.filter((item) => item.member.id === this.selectedStaff()?.id)
+      ? entries.filter(
+          (item) => item.member['staff-pin'] === this.selectedStaff()?.['staff-pin']
+        )
       : entries;
   }
 
@@ -127,7 +129,7 @@ export class StaffCalendarComponent implements OnInit {
     this.calendarForm.reset({
       date,
       endDate: date,
-      staffId: this.selectedStaff()?.id ?? this.staff()[0]?.id ?? '',
+      staffPin: this.selectedStaff()?.['staff-pin'] ?? this.staff()[0]?.['staff-pin'] ?? '',
       type: 'availability',
       title: '',
       startTime: '09:00',
@@ -143,7 +145,7 @@ export class StaffCalendarComponent implements OnInit {
     this.calendarForm.reset({
       date: entry.date,
       endDate: entry.endDate ?? entry.date,
-      staffId: this.selectedStaff()?.id ?? '',
+      staffPin: this.selectedStaff()?.['staff-pin'] ?? '',
       type: entry.type,
       title: entry.title,
       startTime: entry.startTime ?? '', endTime: entry.endTime ?? '', notes: entry.notes ?? '',
@@ -163,7 +165,7 @@ export class StaffCalendarComponent implements OnInit {
       return;
     }
     this.dateRangeError.set(null);
-    const member = this.staff().find((item) => item.id === formValue.staffId);
+    const member = this.staff().find((item) => item['staff-pin'] === formValue.staffPin);
     if (!member) return;
     const entry: StaffCalendarEntry = {
       id: current?.id ?? `event-${Date.now()}`,
@@ -176,8 +178,8 @@ export class StaffCalendarComponent implements OnInit {
       notes: formValue.notes,
     };
     this.store.dispatch(current
-      ? StaffActions.updateCalendarEntry({ staffId: member.id, entry })
-      : StaffActions.addCalendarEntry({ staffId: member.id, entry }));
+      ? StaffActions.updateCalendarEntry({ staffPin: member['staff-pin'], entry })
+      : StaffActions.addCalendarEntry({ staffPin: member['staff-pin'], entry }));
 
     if (current) {
       this.clearCalendarForm();
@@ -196,12 +198,12 @@ export class StaffCalendarComponent implements OnInit {
   deleteCalendarEntry(entryId: string): void {
     const member = this.selectedStaff();
     if (!member) return;
-    this.removeCalendarEntry(member.id, entryId);
+    this.removeCalendarEntry(member['staff-pin'], entryId);
     this.clearCalendarForm();
   }
 
-  removeCalendarEntry(staffId: string, entryId: string): void {
-    this.store.dispatch(StaffActions.deleteCalendarEntry({ staffId, entryId }));
+  removeCalendarEntry(staffPin: string, entryId: string): void {
+    this.store.dispatch(StaffActions.deleteCalendarEntry({ staffPin, entryId }));
     if (this.editingEntry()?.id === entryId) {
       this.clearCalendarForm();
     }
@@ -215,7 +217,7 @@ export class StaffCalendarComponent implements OnInit {
     this.calendarForm.reset({
       date,
       endDate: date,
-      staffId: this.selectedStaff()?.id ?? this.staff()[0]?.id ?? '',
+      staffPin: this.selectedStaff()?.['staff-pin'] ?? this.staff()[0]?.['staff-pin'] ?? '',
       type: 'availability',
       title: '',
       startTime: '09:00',
